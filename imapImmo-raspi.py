@@ -173,7 +173,7 @@ import mimetypes
 
 ### ETAPE 0 : Paramètres ###
 
-dossier = "/home/pi/imap-immo"
+dossier = "/home/pi/immap-immo"
 fichier = 'annonces.csv'
 cheminFichier = dossier + '/' + fichier
 
@@ -282,6 +282,8 @@ for i in range(len(data)):
 ### Sauvegarde des nouveaux résultats pour corps de mail ###
 
 resultat = resultat[['Date','Sender','Code postal','Ville','Prix m²','Surface (m²)','Nb pièces','Prix (€)','URL']]
+resultat = resultat.astype({"Surface (m²)":int,'Prix (€)':int})
+resultat.loc[:,'Prix m²'] = round(resultat.loc[:,'Prix (€)'] / resultat.loc[:,'Surface (m²)'], 2)
 
 data = resultat.values.tolist()
 
@@ -296,8 +298,10 @@ del data[0][0]
 ### ETAPE 5 : Formatage ###
 
 resultat = resultat_old.append(resultat, ignore_index=True)
-resultat = resultat.astype({"Surface (m²)":int,'Prix (€)':int})
-resultat.loc[:,'Prix m²'] = round(resultat.loc[:,'Prix (€)'] / resultat.loc[:,'Surface (m²)'], 2)
+# =============================================================================
+# resultat = resultat.astype({"Surface (m²)":int,'Prix (€)':int})
+# resultat.loc[:,'Prix m²'] = round(resultat.loc[:,'Prix (€)'] / resultat.loc[:,'Surface (m²)'], 2)
+# =============================================================================
 #resultat = resultat.astype({'Prix m²':int})
 resultat = resultat[['Date','Sender','Code postal','Ville','Prix m²','Surface (m²)','Nb pièces','Prix (€)','URL']]
 
