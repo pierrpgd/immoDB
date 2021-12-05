@@ -173,7 +173,7 @@ import mimetypes
 
 ### ETAPE 0 : Paramètres ###
 
-dossier = "/home/pi/immap-immo"
+dossier = "/home/pi/imap-immo"
 fichier = 'annonces.csv'
 cheminFichier = dossier + '/' + fichier
 
