@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun Nov 14 14:34:24 2021
-
-Mis à jour le 30/01/22
+Mis à jour le 18/01/22 à 23:09
 
 @author: Pierrick
 
@@ -284,12 +283,16 @@ import mimetypes
 
 ### ETAPE 0 : Paramètres ###
 
-dossier = "/home/pi/git-projects/Im-mail/"
+dossier = r"C:\Users\Pierrick\OneDrive\Documents\pythonScripts\imapImmo"
 fichier = 'annonces.csv'
-cheminFichier = dossier + fichier
+cheminFichier = dossier + '\\' + fichier
 
-resultat_old = pd.read_csv(cheminFichier,sep=';',decimal=',')
-derDate = resultat_old['Date'].max() #.split(' ')[0]
+if os.path.isfile(cheminFichier):
+    resultat_old = pd.read_csv(cheminFichier,sep=';',decimal=',')
+    derDate = resultat_old['Date'].max() #.split(' ')[0]
+else:
+    resultat_old = pd.DataFrame(columns = ['Date','Sender','Code postal','Ville','Prix m²','Surface (m²)','Nb pièces','Prix (€)','URL'])
+    derDate = '01/01/1970'
 
 ### ETAPE 1 : Connexion ###
 
@@ -348,7 +351,7 @@ while date_list[0] <= derDate:
     del from_list[0]
     del subject_list[0]
     del body_list[0]
-    
+
 data = pd.DataFrame(data={'Date':date_list,'Sender':from_list,'Subject':subject_list, 'Body':body_list, 'Lieu':np.nan})
 
 ### ETAPE 4 : Décodage des corps de mail ###
@@ -426,7 +429,7 @@ resultat = resultat[['Date','Sender','Code postal','Ville','Prix m²','Surface (
 ### ETAPE 6 : Export dans un CSV ###
 
 #data.to_csv('emails.csv',index=False,sep=";",decimal=',')
-resultat.to_csv(cheminFichier,index=False,sep=";",decimal=',')
+resultat.to_csv('annonces.csv',index=False,sep=";",decimal=',')
 
 ### ETAPE 7 : Envoi par mail ###
 
@@ -456,23 +459,24 @@ text = text.format(table=tabulate(data, headers="firstrow", tablefmt="grid"))
 html = html.format(table=tabulate(data, headers="firstrow", tablefmt="html"))
 
 #The mail addresses and password
-sender_address = 'pierrick.pagaud@gmail.com'
-sender_pass = 'Sandreas39*'
-receiver_address = sender_address
+# =============================================================================
+# sender_address = 'pierrick.pagaud@gmail.com'
+# sender_pass = 'Sandreas39*'
+# receiver_address = username
+# =============================================================================
 #Setup the MIME
 message = MIMEMultipart(
     "alternative", None, [MIMEText(text), MIMEText(html,'html')])
-message['From'] = sender_address
-message['To'] = receiver_address
+message['From'] = username
+message['To'] = username
 message['Subject'] = 'Immap-Immo / Annonces du jour'
 #The subject line
 #The body and the attachments for the mail
 #message.attach([MIMEText(text, 'plain'), MIMEText(html,'html')])
 attach_file_name = 'annonces.csv'
-#attach_file_name = cheminFichier
-attach_file = open(cheminFichier, 'rb') # Open the file as binary mode
+attach_file = open(attach_file_name, 'rb') # Open the file as binary mode
 
-mimetype, _ = mimetypes.guess_type(cheminFichier)
+mimetype, _ = mimetypes.guess_type(attach_file_name)
 if mimetype is None:
     mimetype = 'application/octet-stream'
 type_, _, subtype = mimetype.partition('/')
@@ -487,8 +491,8 @@ message.attach(payload)
 #Create SMTP session for sending the mail
 session = smtplib.SMTP('smtp.gmail.com', 587) #use gmail with port
 session.starttls() #enable security
-session.login(sender_address, password) #login with mail_id and password
+session.login(username, password) #login with mail_id and password
 text = message.as_string()
-session.sendmail(sender_address, receiver_address, text)
+session.sendmail(username, username, text)
 session.quit()
 print('Mail Sent')
