@@ -125,11 +125,11 @@ def SeLogerNew(i):
 #                 url = elements.loc[j,'Contenu'].replace(' ','').replace('-ALI168','')
 #                 print(url)
 # =============================================================================
-            if 'EUR(http' in elements.loc[j,'Contenu']:
+            if any(ele in elements.loc[j,'Contenu'] for ele in ['EUR(http', 'EUR (http']):
                 url = elements.loc[j,'Contenu'].split('(')[1].split(')')[0]
                 prix = re.sub(r'http\S+', '', elements.loc[j,'Contenu']).replace(' ','')
                 prix = prix.replace(' ','').replace('(','').replace('EUR','')
-            if 'm2(http' in elements.loc[j,'Contenu']:
+            if any(ele in elements.loc[j,'Contenu'] for ele in ['m2(http', 'm2 (http']):
                 nbPieces = elements.loc[j,'Contenu'].split(' * ')[1].split(' ')[0]
                 surface = elements.loc[j,'Contenu'].split(' * ')[2].split(' ')[0]
                 lieu = elements.loc[j+3,'Contenu']
@@ -157,15 +157,15 @@ def SeLogerNew(i):
                     ville = elements.loc[j,'Contenu'].split(' ')[3] + ' ' + elements.loc[j,'Contenu'].split(' ')[4]
                 else:
                     ville = elements.loc[j,'Contenu'].split(' ')[3]
-            if 'EUR(http' in elements.loc[j,'Contenu']:
+            if any(ele in elements.loc[j,'Contenu'] for ele in ['EUR(http', 'EUR (http']):
                 url = elements.loc[j,'Contenu'].split('(')[1].split(')')[0]
                 prix = re.sub(r'http\S+', '', elements.loc[j,'Contenu']).replace(' ','')
                 prix = prix.replace(' ','').replace('(','').replace('EUR','')
                 if not prix.isnumeric():
                     prix = ''
-            if 'pieces(http' in elements.loc[j,'Contenu']:
+            if any(ele in elements.loc[j,'Contenu'] for ele in ['pieces(http', 'pieces (http']):
                 nbPieces = re.sub(r'http\S+', '', elements.loc[j,'Contenu']).replace(' ','').split('*')[0].split('piece')[0]
-            if 'm2(http' in elements.loc[j,'Contenu']:
+            if any(ele in elements.loc[j,'Contenu'] for ele in ['m2(http', 'm2 (http']):
                 surface = re.sub(r'http\S+', '', elements.loc[j,'Contenu']).replace(' ','').split('*')[1].replace('m2(','')
                 
                 
@@ -252,7 +252,7 @@ def PAP(i):
     
     for j in range(len(elements)):
         if 'Une annonce correspondant à votre recherche' in elements.loc[j,'Contenu']:
-            nbPieces = elements.loc[j+2,'Contenu'].split(' ')[2]
+            if len(elements.loc[j+2,'Contenu'].split(' ')) > 2: nbPieces = elements.loc[j+2,'Contenu'].split(' ')[2]
             ville = elements.loc[j+3,'Contenu'].replace("e",'').replace("r",'')
             surface = elements.loc[j+4,'Contenu'].replace(' m²','')
             prix = elements.loc[j+5,'Contenu'].replace(" EUR",'').replace('.','')
@@ -272,6 +272,7 @@ import numpy as np
 import re
 import unidecode
 import os
+from datetime import datetime
 
 from tabulate import tabulate
 import smtplib
@@ -289,10 +290,11 @@ cheminFichier = dossier + '\\' + fichier
 
 if os.path.isfile(cheminFichier):
     resultat_old = pd.read_csv(cheminFichier,sep=';',decimal=',')
-    derDate = resultat_old['Date'].max() #.split(' ')[0]
+    resultat_old['Date'] = pd.to_datetime(resultat_old['Date'], format='%d/%m/%Y %H:%M')
+    derDate = resultat_old['Date'].max()
 else:
     resultat_old = pd.DataFrame(columns = ['Date','Sender','Code postal','Ville','Prix m²','Surface (m²)','Nb pièces','Prix (€)','URL'])
-    derDate = '01/01/1970'
+    derDate = datetime.strptime('01/01/1970', '%d/%m/%Y')
 
 ### ETAPE 1 : Connexion ###
 
@@ -302,16 +304,21 @@ password = 'ystwmjplhtvhrvya'
 mail = imaplib.IMAP4_SSL('imap.gmail.com')
 mail.login(username, password)
 
+print('Connexion réussie ! Recherche de mails en cours...')
+print('Recherche à partir du : ' + str(derDate))
+
 ### ETAPE 2 : Recherche ###
 
 mail_lists = mail.list()
 #mail.select("INBOX")
 mail.select('"Mes dossiers/Immobilier"')
 
-result, numbers = mail.search(None, '(SINCE "' + pd.to_datetime(derDate).strftime("%d-%b-%Y") + '")') #'(SINCE "01-Jan-2010")'
+result, numbers = mail.search(None, '(SINCE "' + derDate.strftime("%d-%b-%Y") + '")') #'(SINCE "01-Jan-2010")'
 uids = numbers[0].split()
 uids = [id.decode("utf-8") for id in uids ]
 result, messages = mail.fetch(','.join(uids) ,'(RFC822)')
+
+print(str(int(len(messages)/2)) + ' messages récupérés.')
 
 ### ETAPE 3 : Déchiffrage ###
 
@@ -343,8 +350,7 @@ for _, message in messages[::2]:
     fromlist = fromlist.split("<")[0].replace('"', '').replace(" ","")
     from_list.append(fromlist)
 
-date_list = pd.to_datetime(date_list)
-date_list = [item.isoformat(' ')[:-6]for item in date_list]
+date_list = [datetime.strptime(item[:-6], '%a, %d %b %Y %H:%M:%S') for item in date_list]
 
 while date_list[0] <= derDate:
     del date_list[0]
@@ -361,16 +367,25 @@ nvResultat = pd.DataFrame(columns={'Date','Sender','Code postal','Ville','Prix m
 
 # Boucle dans la liste de mails #
 
+m = 0
+oldDate = data.loc[0,'Date']
+
 for i in range(len(data)):
     
     date = data.loc[i,'Date']
+    
+    if (date - oldDate).days > 0:
+        print(str(oldDate) + ' : ' + str(int(m/len(data)*100)) + '%')
+        m = i
+        oldDate = date
+    
     sender = data.loc[i,'Sender']
     nvResultat = nvResultat.drop(nvResultat.index)
     
     # Traitement des mails #
 
     if sender == 'SeLoger':
-        if date < '2021-12-13 12:23:09':
+        if date < datetime.strptime('2021-12-13 12:23:09', '%Y-%m-%d %H:%M:%S'):
         
             SeLogerOld(i)
         
