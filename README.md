@@ -1,2 +1,6 @@
 # Im-mail
-Script de scraping mail sur les annonces immobilières
+Script de compilation des annonces immobilières transmises par mail.
+Sources :
+- SeLoger
+- Century21
+- PAP
